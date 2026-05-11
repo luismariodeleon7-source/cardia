@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CardioRisk AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@300;400;600&family=Barlow:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--red:#e8001d;--red-dim:#9b0012;--red-glow:rgba(232,0,29,0.35);--bg:#080808;--bg2:#111111;--bg3:#1a1a1a;--border:#2a2a2a;--text:#e8e8e8;--muted:#666;--success:#00e676;--warn:#ffc107}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-weight:300;min-height:100vh;overflow-x:hidden}
+header{position:relative;padding:3rem 2rem 2rem;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0f0000 0%,var(--bg) 100%);text-align:center;overflow:hidden}
+header::after{content:'';position:absolute;font-size:22rem;color:rgba(232,0,29,0.04);top:-6rem;left:50%;transform:translateX(-50%);pointer-events:none;animation:pulse-bg 3s ease-in-out infinite}
+@keyframes pulse-bg{0%,100%{transform:translateX(-50%) scale(1);opacity:.04}50%{transform:translateX(-50%) scale(1.05);opacity:.07}}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,6vw,5rem);letter-spacing:.12em;color:var(--red);text-shadow:0 0 40px var(--red-glow),0 0 80px rgba(232,0,29,.15);position:relative}
+.logo span{color:var(--text)}
+.subtitle{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--muted);letter-spacing:.25em;margin-top:.4rem;text-transform:uppercase}
+#api-status{display:inline-flex;align-items:center;gap:.5rem;margin-top:1.2rem;padding:.3rem .9rem;border:1px solid var(--border);border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--muted);transition:all .3s}
+#api-status .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);animation:blink 1.5s infinite}
+#api-status.online{border-color:var(--success);color:var(--success)}
+#api-status.online .dot{background:var(--success)}
+#api-status.offline{border-color:var(--red);color:var(--red)}
+#api-status.offline .dot{background:var(--red);animation:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+nav{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:100}
+nav button{flex:1;padding:1.1rem;background:none;border:none;color:var(--muted);font-family:'Barlow',sans-serif;font-size:.9rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .25s;border-bottom:3px solid transparent}
+nav button.active{color:var(--red);border-bottom-color:var(--red);background:rgba(232,0,29,.05)}
+nav button:hover:not(.active){color:var(--text);background:rgba(255,255,255,.03)}
+main{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 4rem}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:.1em;color:var(--red);margin-bottom:1.5rem;display:flex;align-items:center;gap:.8rem}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.model-selector{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem;margin-bottom:2rem}
+.model-btn{padding:.8rem;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--muted);font-family:'Barlow',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;text-align:center;transition:all .2s}
+.model-btn.active{border-color:var(--red);color:var(--text);background:rgba(232,0,29,.1);box-shadow:0 0 16px var(--red-glow)}
+.model-btn:hover:not(.active){border-color:#444;color:var(--text)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;margin-bottom:1.5rem}
+.field{display:flex;flex-direction:column;gap:.4rem}
+.field label{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.field label .tip{display:block;font-size:.6rem;color:#444;margin-top:.1rem;font-style:italic;text-transform:none;letter-spacing:0}
+.field input,.field select{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.85rem;padding:.6rem .8rem;outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+.field input:focus,.field select:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-glow)}
+.field select option{background:var(--bg3)}
+.btn-primary{display:inline-flex;align-items:center;gap:.6rem;background:var(--red);color:#fff;border:none;padding:.85rem 2rem;border-radius:6px;font-family:'Barlow',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:background .2s,box-shadow .2s,transform .1s}
+.btn-primary:hover{background:#c0001a;box-shadow:0 4px 20px var(--red-glow)}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{background:#3a0008;color:#663;cursor:not-allowed}
+.btn-secondary{display:inline-flex;align-items:center;gap:.6rem;background:transparent;color:var(--text);border:1px solid var(--border);padding:.85rem 1.5rem;border-radius:6px;font-family:'Barlow',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-secondary:hover{border-color:#555;background:rgba(255,255,255,.04)}
+#result-individual{margin-top:2rem;border:1px solid var(--border);border-radius:12px;overflow:hidden;display:none}
+#result-individual.show{display:block;animation:fadeIn .4s ease}
+.result-header{padding:1.2rem 1.5rem;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.result-model{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--muted);text-transform:uppercase}
+.risk-badge{padding:.3rem .8rem;border-radius:999px;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.1em}
+.risk-BAJO{background:rgba(0,230,118,.15);color:var(--success);border:1px solid var(--success)}
+.risk-MODERADO{background:rgba(255,193,7,.1);color:var(--warn);border:1px solid var(--warn)}
+.risk-ALTO{background:rgba(232,0,29,.15);color:var(--red);border:1px solid var(--red)}
+.result-body{padding:1.5rem}
+.prob-bar-wrap{margin:1rem 0}
+.prob-label{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--muted);margin-bottom:.4rem}
+.prob-bar-bg{height:8px;background:var(--border);border-radius:99px;overflow:hidden}
+.prob-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--red-dim),var(--red));transition:width 1s cubic-bezier(.22,1,.36,1);box-shadow:0 0 10px var(--red-glow)}
+.result-message{padding:1rem;border-radius:8px;background:var(--bg);border-left:3px solid var(--red);font-size:.9rem;line-height:1.6}
+.both-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:3rem;text-align:center;cursor:pointer;transition:all .25s;background:var(--bg3);margin-bottom:1.5rem}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--red);background:rgba(232,0,29,.05)}
+.upload-zone .icon{font-size:2.5rem;margin-bottom:.8rem}
+.upload-zone p{color:var(--muted);font-size:.9rem}
+#file-name{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--red);margin-top:.5rem}
+.metrics-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.8rem;margin-bottom:1.5rem}
+.metric-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1rem .8rem;text-align:center}
+.metric-card .val{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--red)}
+.metric-card .lbl{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.2rem}
+.cm-wrap{overflow-x:auto}
+.cm-table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:.85rem}
+.cm-table th{padding:.6rem .8rem;background:var(--bg3);color:var(--muted);font-weight:400;font-size:.7rem;text-align:center;text-transform:uppercase;letter-spacing:.1em}
+.cm-table td{padding:.8rem;text-align:center;border:1px solid var(--border);font-size:1.1rem;font-weight:600}
+.cm-tp{background:rgba(0,230,118,.12);color:var(--success)}
+.cm-tn{background:rgba(0,230,118,.08);color:#58d68d}
+.cm-fp{background:rgba(232,0,29,.08);color:#e57373}
+.cm-fn{background:rgba(232,0,29,.12);color:var(--red)}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.info-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-top:2.5rem}
+.info-panel h3{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.08em;color:var(--red);margin-bottom:1rem}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.info-block h4{font-size:.8rem;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem}
+.info-block p{font-size:.88rem;line-height:1.6;color:#aaa}
+footer{text-align:center;padding:2rem;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#333;letter-spacing:.15em;text-transform:uppercase}
+@media(max-width:640px){.model-selector{grid-template-columns:1fr}.metrics-grid{grid-template-columns:repeat(3,1fr)}.both-grid{grid-template-columns:1fr}.info-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Cardio<span>Risk</span> AI</div>
+  <div class="subtitle">Sistema de prediccion de enfermedad cardiaca</div>
+  <div id="api-status"><span class="dot"></span><span id="api-status-text">Conectando...</span></div>
+</header>
+<nav>
+  <button class="active" onclick="switchTab('individual',this)">Prediccion Individual</button>
+  <button onclick="switchTab('batch',this)">Prediccion por Lotes</button>
+  <button onclick="switchTab('metrics',this)">Metricas del Modelo</button>
+</nav>
+<main>
+    <div id="tab-individual" class="tab-panel active">
+  <div class="section-title">Datos del Paciente</div>
+  <div class="model-selector">
+    <button class="model-btn active" onclick="setModel('logistic',this)">Reg. Logistica</button>
+    <button class="model-btn" onclick="setModel('neural',this)">Red Neuronal</button>
+    <button class="model-btn" onclick="setModel('both',this)">Ambos Modelos</button>
+  </div>
+  <div class="form-grid" id="patient-form">
+    <div class="field"><label>HighBP - Presion Arterial Alta<span class="tip">0=No · 1=Si</span></label><select id="HighBP"><option value="0">0 - No</option><option value="1">1 - Si</option></select></div>
+    <div class="field"><label>HighChol - Colesterol Alto<span class="tip">0=No · 1=Si</span></label><select id="HighChol"><option value="0">0 - No</option><option value="1">1 - Si</option></select></div>
+    <div class="field"><label>CholCheck - Revision Colesterol<span class="tip">Ultimos 5 anos</span></label><select id="CholCheck"><option value="1">1 - Si</option><option value="0">0 - No</option></select></div>
+    <div class="field"><label>BMI - Indice de Masa Corporal<span class="tip">Ejemplo: 25</span></label><input type="number" id="BMI" value="27" min="10" max="100" step="0.1"/></div>
+    <div class="field"><label>Smoker - Fumador<span class="tip">+100 cigarrillos en su vida</span></label><select id="Smoker"><option value="0">0 - No</option><option value="1">1 - Si</option></select></div>
+    <div class="field"><label>Stroke - Derrame Cerebral<span class="tip">0=No · 1=Si</span></label><select id="Stroke"><option value="0">0 - No</option><option value="1">1 - Si</option></select></div>
+    <div class="field"><label>Diabetes<span class="tip">0=No · 1=Prediabetes · 2=Si</span></label><select id="Diabetes"><option value="0">0 - No</option><option value="1">1 - Prediabetes</option><option value="2">2 - Si</option></select></div>
+    <div class="field"><label>PhysActivity - Actividad Fisica<span class="tip">Ultimos 30 dias</span></label><select id="PhysActivity"><option value="1">1 - Si</option><option value="0">0 - No</option></select></div>
+    <div class="field"><label>Fruits - Consume Frutas<span class="tip">Al menos 1 vez al dia</span></label><select id="Fruits"><option value="1">1 - Si</option><option value="0">0 - No</option></select></div>
+    <div class="field"><label>Veggies - Consume Verduras<span class="tip">Al menos 1 vez al dia</span></label><select id="Veggies"><option value="1">1 - Si</option><option value="0">0 - No</option></select></div>
+    <div class="field"><label>HvyAlcoholConsump - Alcohol Exc.<span class="tip">H>=14 / M>=7 tragos/sem</span></label><select id="HvyAlcoholConsump"><option value="0">0 - No</option><option value="1">1 - Si</option></select></div>
+    <div class="field"><label>AnyHealthcare - Seguro Medico<span class="tip">0=No · 1=Si</span></label><select id="AnyHealthcare"><option value="1">1 - Si</option><option value="0">0 - No</option></select></div>
+    <div class="field"><label>NoDocbcCost - Sin Medico x Costo<span class="tip">Ultimos 12 meses</span></label><select id="NoDocbcCost"><option value="0">0 - No</option><option value="1">1 - Si</option></select></div>
+    <div class="field"><label>GenHlth - Salud General<span class="tip">1=Excelente · 5=Pobre</span></label><select id="GenHlth"><option value="1">1-Excelente</option><option value="2">2-Muy buena</option><option value="3" selected>3-Buena</option><option value="4">4-Regular</option><option value="5">5-Pobre</option></select></div>
+    <div class="field"><label>MentHlth - Salud Mental<span class="tip">Dias malos ultimos 30 (0-30)</span></label><input type="number" id="MentHlth" value="0" min="0" max="30"/></div>
+    <div class="field"><label>PhysHlth - Salud Fisica<span class="tip">Dias malos ultimos 30 (0-30)</span></label><input type="number" id="PhysHlth" value="0" min="0" max="30"/></div>
+    <div class="field"><label>DiffWalk - Dificultad Caminar<span class="tip">0=No · 1=Si</span></label><select id="DiffWalk"><option value="0">0 - No</option><option value="1">1 - Si</option></select></div>
+    <div class="field"><label>Sex - Sexo<span class="tip">0=Femenino · 1=Masculino</span></label><select id="Sex"><option value="0">0 - Femenino</option><option value="1">1 - Masculino</option></select></div>
+    <div class="field"><label>Age - Categoria de Edad<span class="tip">1=18-24 ... 13=80+</span></label><select id="Age"><option value="1">1-18-24</option><option value="2">2-25-29</option><option value="3">3-30-34</option><option value="4">4-35-39</option><option value="5">5-40-44</option><option value="6">6-45-49</option><option value="7" selected>7-50-54</option><option value="8">8-55-59</option><option value="9">9-60-64</option><option value="10">10-65-69</option><option value="11">11-70-74</option><option value="12">12-75-79</option><option value="13">13-80+</option></select></div>
+    <div class="field"><label>Education - Nivel Educativo<span class="tip">1=Sin estudio · 6=Universidad</span></label><select id="Education"><option value="1">1-Sin escolaridad</option><option value="2">2-Primaria</option><option value="3">3-Algo secundaria</option><option value="4">4-Secundaria completa</option><option value="5">5-Algo universidad</option><option value="6" selected>6-Universidad</option></select></div>
+    <div class="field"><label>Income - Nivel de Ingresos<span class="tip">1=menos $1.000.000 · 8=mas $7.500.000</span></label><select id="Income"><option value="1">1-menos $1.000.000</option><option value="2">2-$1.000.000-$1.500.000</option><option value="3">3-$1.500.000-$2.000.000</option><option value="4">4-$2.000.000-$2.500.000</option><option value="5">5-$2.500.000-$3.500.000</option><option value="6" selected>6-$3.500.000-$5.000.000</option><option value="7">7-$5.000.000-$7.500.000</option><option value="8">8-mas $7.500.000</option></select></div>
+  </div>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+    <button class="btn-primary" id="predict-btn" onclick="predictIndividual()">Predecir Riesgo</button>
+    <button class="btn-secondary" onclick="resetForm()">Reiniciar</button>
+  </div>
+  <div id="result-individual"></div>
+</div>
+<div id="tab-batch" class="tab-panel">
+  <div class="section-title">Prediccion por Lotes CSV</div>
+  <div class="model-selector" style="grid-template-columns:1fr 1fr;">
+    <button class="model-btn active" onclick="setBatchModel('logistic',this)">Reg. Logistica</button>
+    <button class="model-btn" onclick="setBatchModel('neural',this)">Red Neuronal</button>
+  </div>
+  <div class="upload-zone" id="drop-zone"
+       onclick="document.getElementById('csv-input').click()"
+       ondragover="event.preventDefault();this.classList.add('drag')"
+       ondragleave="this.classList.remove('drag')"
+       ondrop="handleDrop(event)">
+    <div class="icon"></div>
+    <p><strong>Arrastra tu CSV aqui</strong> o haz clic para seleccionar</p>
+    <p style="margin-top:.4rem;font-size:.78rem;">Debe tener las columnas del dataset BRFSS 2015.<br>
+    Si incluye <code style="color:var(--red)">HeartDiseaseorAttack</code> se calculan metricas.</p>
+    <div id="file-name"></div>
+  </div>
+  <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleFileSelect(event)"/>
+  <button class="btn-primary" id="batch-btn" onclick="predictBatch()" disabled>Procesar Lote</button>
+  <div id="batch-results" style="margin-top:2rem;display:none;">
+    <div class="section-title" style="margin-top:1rem;">Resultados</div>
+    <div id="batch-metrics-grid" class="metrics-grid"></div>
+    <div class="section-title" style="font-size:1.1rem;">Matriz de Confusion</div>
+    <div class="cm-wrap">
+      <table class="cm-table">
+        <thead><tr><th></th><th>Pred: Sin Enfermedad (0)</th><th>Pred: Con Enfermedad (1)</th></tr></thead>
+        <tbody id="cm-body"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:1.5rem;">
+      <button class="btn-secondary" onclick="downloadCSV()">Descargar predicciones CSV</button>
+    </div>
+  </div>
+</div>
+
+<div id="tab-metrics" class="tab-panel">
+  <div class="section-title">Metricas en Conjunto de Prueba</div>
+  <div id="saved-metrics-content"><p style="color:var(--muted)">Cargando metricas...</p></div>
+  <div class="info-panel">
+    <h3>Sobre los Modelos</h3>
+    <div class="info-grid">
+      <div class="info-block"><h4>Regresion Logistica</h4><p>Modelo lineal con regularizacion L2 y ajuste de pesos de clase para manejar el desbalance del dataset. Coeficientes interpretables como log-odds.</p></div>
+      <div class="info-block"><h4>Red Neuronal MLP</h4><p>Perceptron multicapa con capas 64-32 neuronas, activacion ReLU y parada temprana. Captura relaciones no lineales entre factores de riesgo.</p></div>
+      <div class="info-block"><h4>Dataset</h4><p>BRFSS 2015 - 253,680 encuestas del CDC. 21 variables de riesgo cardiovascular. Division 80/20 entrenamiento/prueba.</p></div>
+      <div class="info-block"><h4>Variables Clave</h4><p>HighBP, HighChol, Stroke, Diabetes, GenHlth y Age son los predictores mas importantes segun coeficientes de la regresion logistica.</p></div>
+    </div>
+  </div>
+</div>
+</main>
+<footer>CardioRisk AI · Proyecto Final · BRFSS 2015 · FastAPI + Scikit-learn</footer>
+<script>
+
+const API='http://localhost:8000';
+let currentModel='logistic',batchModel='logistic',batchResponse=null,batchFile=null;
+
+const FEATURES=["HighBP","HighChol","CholCheck","BMI","Smoker","Stroke","Diabetes","PhysActivity",
+  "Fruits","Veggies","HvyAlcoholConsump","AnyHealthcare","NoDocbcCost","GenHlth","MentHlth",
+  "PhysHlth","DiffWalk","Sex","Age","Education","Income"];
+
+async function checkAPI(){
+  const el=document.getElementById('api-status'),
+        txt=document.getElementById('api-status-text');
+  try{
+    const r=await fetch(`${API}/`);
+    if(r.ok){
+      el.className='online';
+      txt.textContent='API conectada · localhost:8000';
+      loadSavedMetrics();
+    }else throw new Error();
+  }catch{
+    el.className='offline';
+    txt.textContent='API no disponible · inicia uvicorn';
+  }
+}
+checkAPI();
+setInterval(checkAPI,15000);
+
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  btn.classList.add('active');
+}
+
+function setModel(m,btn){
+  currentModel=m;
+  document.querySelectorAll('#tab-individual .model-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setBatchModel(m,btn){
+  batchModel=m;
+  document.querySelectorAll('#tab-batch .model-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function readForm(){
+  const d={};
+  FEATURES.forEach(f=>{
+    d[f]=parseFloat(document.getElementById(f).value);
+  });
+  return d;
+}
+
+function resetForm(){
+  const r=document.getElementById('result-individual');
+  r.innerHTML='';
+  r.classList.remove('show');
+}
+
+async function predictIndividual(){
+  const btn=document.getElementById('predict-btn');
+  btn.innerHTML='<span class="spinner"></span> Analizando...';
+  btn.disabled=true;
+
+  const body=readForm();
+
+  try{
+    if(currentModel==='both'){
+      const r=await fetch(`${API}/predict/both`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      });
+      if(!r.ok)throw new Error(await r.text());
+      renderBothResults(await r.json());
+    }else{
+      const ep=currentModel==='logistic'?'logistic':'neural';
+      const r=await fetch(`${API}/predict/${ep}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      });
+      if(!r.ok)throw new Error(await r.text());
+      renderSingleResult(await r.json());
+    }
+  }catch(e){
+    showError('result-individual',e.message);
+  }finally{
+    btn.innerHTML=' Predecir Riesgo';
+    btn.disabled=false;
+  }
+}
+
+function renderSingleResult(d){
+  const div=document.getElementById('result-individual'),
+        pct=(d.probability*100).toFixed(1);
+
+  div.innerHTML=`
+    <div class="result-header">
+      <span class="result-model">${d.model}</span>
+      <span class="risk-badge risk-${d.risk_level}">${d.risk_level}</span>
+    </div>
+    <div class="result-body">
+      <div class="prob-bar-wrap">
+        <div class="prob-label">
+          <span>Probabilidad enfermedad cardiaca</span>
+          <span>${pct}%</span>
+        </div>
+        <div class="prob-bar-bg">
+          <div class="prob-bar-fill" style="width:0%" id="pbar"></div>
+        </div>
+      </div>
+      <div class="result-message">${d.message}</div>
+    </div>
+  `;
+
+  div.classList.add('show');
+  setTimeout(()=>{
+    document.getElementById('pbar').style.width=pct+'%';
+  },100);
+}
+
+function renderBothResults(data){
+  const div=document.getElementById('result-individual');
+  div.innerHTML='<div class="both-grid" id="both-inner"></div>';
+  div.classList.add('show');
+
+  ['logistic_regression','neural_network'].forEach(key=>{
+    const d=data[key],
+          pct=(d.probability*100).toFixed(1),
+          bid=`pbar-${key}`;
+
+    const card=document.createElement('div');
+    card.style.cssText='border:1px solid var(--border);border-radius:12px;overflow:hidden;';
+
+    card.innerHTML=`
+      <div class="result-header">
+        <span class="result-model">${d.model}</span>
+        <span class="risk-badge risk-${d.risk_level}">${d.risk_level}</span>
+      </div>
+      <div class="result-body">
+        <div class="prob-bar-wrap">
+          <div class="prob-label">
+            <span>Probabilidad</span>
+            <span>${pct}%</span>
+          </div>
+          <div class="prob-bar-bg">
+            <div class="prob-bar-fill" style="width:0%" id="${bid}"></div>
+          </div>
+        </div>
+        <div class="result-message">${d.message}</div>
+      </div>
+    `;
+
+    document.getElementById('both-inner').appendChild(card);
+    setTimeout(()=>{
+      document.getElementById(bid).style.width=pct+'%';
+    },100);
+  });
+}
+
+function handleFileSelect(e){
+  batchFile=e.target.files[0];
+  showFileName();
+}
+
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag');
+  batchFile=e.dataTransfer.files[0];
+  showFileName();
+}
+
+function showFileName(){
+  if(!batchFile)return;
+  document.getElementById('file-name').textContent='📄 '+batchFile.name;
+  document.getElementById('batch-btn').disabled=false;
+}
+
+async function predictBatch(){
+  if(!batchFile)return;
+
+  const btn=document.getElementById('batch-btn');
+  btn.innerHTML='<span class="spinner"></span> Procesando...';
+  btn.disabled=true;
+
+  const fd=new FormData();
+  fd.append('file',batchFile);
+
+  try{
+    const ep=batchModel==='logistic'?'logistic':'neural';
+
+    const r=await fetch(`${API}/predict/batch/${ep}`,{
+      method:'POST',
+      body:fd
+    });
+
+    // 🔥 FIX IMPORTANTE
+    if(!r.ok){
+      const text=await r.text();
+      throw new Error(text || "Error en batch");
+    }
+
+    batchResponse=await r.json();
+    renderBatchResults(batchResponse);
+
+  }catch(e){
+    showError('batch-results',e.message);
+  }finally{
+    btn.innerHTML=' Procesar Lote';
+    btn.disabled=false;
+  }
+}
+
+function renderBatchResults(d){
+  const wrap=document.getElementById('batch-results');
+  wrap.style.display='block';
+
+  const mg=document.getElementById('batch-metrics-grid');
+
+  if(d.metrics&&Object.keys(d.metrics).length){
+    const fmt=v=>(v*100).toFixed(1)+'%';
+    mg.innerHTML=`
+      <div class="metric-card"><div class="val">${fmt(d.metrics.accuracy)}</div><div class="lbl">Accuracy</div></div>
+      <div class="metric-card"><div class="val">${fmt(d.metrics.precision)}</div><div class="lbl">Precision</div></div>
+      <div class="metric-card"><div class="val">${fmt(d.metrics.recall)}</div><div class="lbl">Recall</div></div>
+      <div class="metric-card"><div class="val">${fmt(d.metrics.f1)}</div><div class="lbl">F1-Score</div></div>
+      <div class="metric-card"><div class="val">${fmt(d.metrics.roc_auc)}</div><div class="lbl">ROC-AUC</div></div>
+    `;
+  }else{
+    mg.innerHTML='<p style="color:var(--muted);grid-column:1/-1">CSV sin columna HeartDiseaseorAttack - sin metricas.</p>';
+  }
+
+  const cm=d.confusion_matrix;
+
+  if(cm&&cm.length===2){
+    document.getElementById('cm-body').innerHTML=`
+      <tr>
+        <th style="text-align:left;padding:.6rem .8rem;color:var(--muted);font-size:.7rem;">
+          Real: Sin Enfermedad (0)
+        </th>
+        <td class="cm-tn">${cm[0][0].toLocaleString()}<br><small>TN</small></td>
+        <td class="cm-fp">${cm[0][1].toLocaleString()}<br><small>FP</small></td>
+      </tr>
+      <tr>
+        <th style="text-align:left;padding:.6rem .8rem;color:var(--muted);font-size:.7rem;">
+          Real: Con Enfermedad (1)
+        </th>
+        <td class="cm-fn">${cm[1][0].toLocaleString()}<br><small>FN</small></td>
+        <td class="cm-tp">${cm[1][1].toLocaleString()}<br><small>TP</small></td>
+      </tr>
+    `;
+  }
+}
+
+function downloadCSV(){
+  if(!batchResponse)return;
+
+  const rows=[['index','prediction','probability']];
+
+  batchResponse.predictions.forEach((p,i)=>{
+    rows.push([i,p,batchResponse.probabilities[i]]);
+  });
+
+  const a=document.createElement('a');
+  a.href='data:text/csv,'+encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+  a.download='predicciones.csv';
+  a.click();
+}
+
+async function loadSavedMetrics(){
+  try{
+    const r=await fetch(`${API}/metrics`);
+    renderSavedMetrics(await r.json());
+  }catch{}
+}
+
+function renderSavedMetrics(data){
+  document.getElementById('saved-metrics-content').innerHTML='✔ Métricas cargadas';
+}
+
+/* 🔥 FIX CRÍTICO FINAL */
+function showError(id, msg){
+  const el=document.getElementById(id);
+
+  if(!el){
+    console.error("Elemento no encontrado:", id);
+    alert(msg);
+    return;
+  }
+
+  el.style.display='block';
+  el.innerHTML=`
+    <div style="margin-top:1rem;padding:1rem;border:1px solid var(--red);border-radius:8px;color:var(--red);font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(232,0,29,.05)">
+      ❌ Error: ${msg}<br><br>
+      Backend:<br>
+      <code>uvicorn backend.main:app --reload --port 8000</code>
+    </div>
+  `;
+}
+
+</script>
+</body>
+</html>
